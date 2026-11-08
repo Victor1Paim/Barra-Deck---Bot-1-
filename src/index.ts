@@ -32,8 +32,14 @@ Uso:
 Variável DECK_USUARIO escolhe quem está usando o terminal (padrão: o primeiro admin).`;
 
 function exigirChaveApi(config: Config) {
-  if (!config.apiKey) {
-    console.error("Falta OPENAI_API_KEY. Copie .env.example para .env e preencha a chave.");
+  if (!config.apiKey || config.apiKey === "sk-..." || !config.apiKey.startsWith("sk-")) {
+    console.error(
+      "Falta a chave da OpenAI.\n" +
+        "1. Abra o arquivo .env (no PowerShell: notepad .env)\n" +
+        "2. Na linha OPENAI_API_KEY= coloque sua chave (começa com sk-), sem espaços nem aspas\n" +
+        "3. Salve e rode de novo.\n" +
+        "Nunca cole a chave na conversa: ela vai para o histórico.",
+    );
     process.exit(1);
   }
 }
@@ -70,6 +76,10 @@ async function conversar(config: Config, pedido: string) {
       if (texto === "/limpar") {
         agente.limpar();
         console.log(cor.cinza("Conversa reiniciada (notas e lembretes continuam salvos)."));
+        continue;
+      }
+      if (/\bsk-[A-Za-z0-9_-]{20,}/.test(texto)) {
+        console.log(cor.amarelo("⚠️ Isso parece uma chave da OpenAI. Não mandei para ninguém. Coloque no arquivo .env (notepad .env) e revogue esta chave se ela já foi colada em algum lugar."));
         continue;
       }
       try {
