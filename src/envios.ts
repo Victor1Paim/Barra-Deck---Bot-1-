@@ -1,6 +1,6 @@
 import path from "node:path";
 import { Colecao, novoId } from "./armazenamento.js";
-import type { Config, Usuario } from "./config.js";
+import { buscarDestinatario, type Config, type Usuario } from "./config.js";
 
 /** Um canal entrega mensagens a um usuário (WhatsApp, e-mail, terminal...). */
 export interface Canal {
@@ -58,7 +58,7 @@ export async function despachar(config: Config, canais: Canal[], agora: () => Da
   let entregues = 0;
 
   for (const envio of pendentes) {
-    const usuario = config.empresa.usuarios.find((u) => u.id === envio.para);
+    const usuario = buscarDestinatario(config, envio.para);
     const erros: string[] = [];
     const ok: string[] = [];
     if (!usuario) erros.push(`usuário ${envio.para} não existe`);

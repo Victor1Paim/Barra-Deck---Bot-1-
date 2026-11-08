@@ -20,9 +20,40 @@ export interface Grupo {
   sensivel?: boolean;
 }
 
+export interface Unidade {
+  id: string;
+  nome: string;
+}
+
+/** Valor de unidade que vale para todas as casas. */
+export const TODAS = "todas";
+
+/**
+ * Grupo de WhatsApp liberado para o bot. Quem estiver no grupo pode falar com ele,
+ * mas o grupo só enxerga as pastas listadas — independente da pessoa.
+ */
+export interface GrupoWhatsApp {
+  /** JID do grupo, ex.: 120363000000000000@g.us (o serviço lista os seus ao conectar). */
+  jid: string;
+  nome: string;
+  /** Pastas de dados (ids de "grupos") que este grupo pode ver e usar. */
+  pastas: string[];
+  /** Restringe a uma unidade (ex.: "lounge"). Vazio = todas. */
+  unidade?: string;
+  /** "mencao" (padrão): responde quando chamam o bot. "tudo": lê e responde tudo. */
+  responder?: "mencao" | "tudo";
+  resumoDiario?: string;
+}
+
 export interface Usuario {
   id: string;
   nome: string;
+  /** Lista fechada de pastas visíveis (usado nos grupos de WhatsApp). Se existir, vale só ela. */
+  pastas?: string[];
+  /** Restringe a uma unidade. */
+  unidade?: string;
+  /** JID do grupo de WhatsApp, quando o "usuário" é um grupo. */
+  whatsappGrupo?: string;
   /** Número com DDI e DDD, só dígitos. Ex.: 5511999990000 */
   whatsapp?: string;
   email?: string;
@@ -35,10 +66,13 @@ export interface Usuario {
 
 export interface ConfigEmpresa {
   empresa: { nome: string; descricao: string };
+  unidades: Unidade[];
   grupos: Grupo[];
   usuarios: Usuario[];
+  gruposWhatsApp: GrupoWhatsApp[];
   canais: {
-    whatsapp: { ativo: boolean };
+    /** conversaPrivada: usuários cadastrados também podem falar no privado (padrão true). */
+    whatsapp: { ativo: boolean; conversaPrivada?: boolean };
     email: { ativo: boolean; remetente?: string };
   };
 }
@@ -71,9 +105,11 @@ export const GRUPOS_PADRAO: Grupo[] = [
 export function empresaPadrao(): ConfigEmpresa {
   return {
     empresa: { nome: "Minha Empresa", descricao: "" },
+    unidades: [],
     grupos: GRUPOS_PADRAO,
     usuarios: [{ id: "eu", nome: "Eu", admin: true, grupos: ["*"], resumoDiario: "08:00" }],
-    canais: { whatsapp: { ativo: false }, email: { ativo: false } },
+    gruposWhatsApp: [],
+    canais: { whatsapp: { ativo: false, conversaPrivada: true }, email: { ativo: false } },
   };
 }
 
@@ -83,8 +119,10 @@ export function carregarEmpresa(arquivo: string): ConfigEmpresa {
   const padrao = empresaPadrao();
   const empresa: ConfigEmpresa = {
     empresa: { ...padrao.empresa, ...lido.empresa },
+    unidades: lido.unidades ?? [],
     grupos: lido.grupos?.length ? lido.grupos : padrao.grupos,
     usuarios: lido.usuarios?.length ? lido.usuarios : padrao.usuarios,
+    gruposWhatsApp: lido.gruposWhatsApp ?? [],
     canais: {
       whatsapp: { ...padrao.canais.whatsapp, ...lido.canais?.whatsapp },
       email: { ...padrao.canais.email, ...lido.canais?.email },
@@ -94,6 +132,13 @@ export function carregarEmpresa(arquivo: string): ConfigEmpresa {
   for (const u of empresa.usuarios) {
     if (ids.has(u.id)) throw new Error(`Usuário repetido em deck.config.json: ${u.id}`);
     ids.add(u.id);
+  }
+  const pastas = new Set(empresa.grupos.map((g) => g.id));
+  const unidades = new Set(empresa.unidades.map((u) => u.id));
+  for (const g of empresa.gruposWhatsApp) {
+    const erradas = g.pastas.filter((p) => !pastas.has(p));
+    if (erradas.length) throw new Error(`Grupo de WhatsApp "${g.nome}": pastas inexistentes: ${erradas.join(", ")}`);
+    if (g.unidade && !unidades.has(g.unidade)) throw new Error(`Grupo de WhatsApp "${g.nome}": unidade inexistente: ${g.unidade}`);
   }
   return empresa;
 }
@@ -131,10 +176,39 @@ export function buscarUsuario(config: Config, id: string | undefined): Usuario {
   return u;
 }
 
+export const idDoGrupoWhatsApp = (jid: string) => `wa:${jid}`;
+
+/** Um grupo de WhatsApp tratado como destinatário/"usuário" (com lista fechada de pastas). */
+export function usuarioDoGrupo(g: GrupoWhatsApp): Usuario {
+  return {
+    id: idDoGrupoWhatsApp(g.jid),
+    nome: g.nome,
+    whatsappGrupo: g.jid,
+    pastas: g.pastas,
+    unidade: g.unidade,
+    resumoDiario: g.resumoDiario,
+  };
+}
+
+/** Pessoas + grupos de WhatsApp: todos que podem receber avisos. */
+export function destinatarios(config: Config): Usuario[] {
+  return [...config.empresa.usuarios, ...config.empresa.gruposWhatsApp.map(usuarioDoGrupo)];
+}
+
+export function buscarDestinatario(config: Config, id: string): Usuario | undefined {
+  return destinatarios(config).find((u) => u.id === id);
+}
+
+/** A unidade do item é visível para este usuário? (sem unidade ou "todas" = sempre) */
+export function podeVerUnidade(usuario: Usuario, unidade?: string): boolean {
+  return !usuario.unidade || !unidade || unidade === TODAS || unidade === usuario.unidade;
+}
+
 /** O usuário pode ver/usar este grupo? */
 export function podeVerGrupo(config: Config, usuario: Usuario, grupoId: string): boolean {
   const g = config.empresa.grupos.find((x) => x.id === grupoId);
   if (!g) return false;
+  if (usuario.pastas) return usuario.pastas.includes(grupoId);
   if (!g.restrito) return true;
   const permitidos = usuario.grupos ?? [];
   return permitidos.includes("*") || permitidos.includes(grupoId);

@@ -8,7 +8,9 @@ API da OpenAI, que decide sozinha quais ferramentas usar para cumprir cada pedid
 
 ## O que ele faz
 
-- **Memória por grupos**: clientes e fornecedores · processos e reuniões · financeiro · projetos, tarefas e ideias.
+- **Memória em pastas**: clientes e fornecedores · processos e reuniões · financeiro · projetos, tarefas e ideias.
+- **Unidades**: cada informação é etiquetada com a casa (ex.: Barra Deck Restaurante, BD Lounge) ou "todas".
+- **Grupos de WhatsApp liberados por você**: o bot atende quem estiver no grupo, mas o grupo só enxerga as pastas (e a unidade) que você ligar a ele, não importa quem pergunte.
 - **Equipe**: várias pessoas, e o financeiro só aparece para quem tem acesso.
 - **Lembretes**: pontuais, recorrentes ("todo dia 5", "toda segunda e quarta"), com aviso antecipado ("3 dias antes").
 - **Resumo diário** no horário de cada pessoa.
@@ -50,7 +52,22 @@ Exemplos:
 1. Em `deck.config.json`, coloque `"canais": { "whatsapp": { "ativo": true } }`.
 2. Rode `npm run servico` e escaneie o QR Code com o WhatsApp **do número do bot**
    (Configurações → Aparelhos conectados → Conectar aparelho).
-3. A equipe cadastrada manda mensagem para esse número e conversa com o Deck One. Quem não está cadastrado é ignorado.
+3. A equipe cadastrada pode falar com o bot no privado (desligue com `"conversaPrivada": false`).
+
+#### Grupos de WhatsApp
+
+1. Adicione o número do bot aos grupos.
+2. Rode `npm run servico`: ao conectar, ele lista os grupos e o **JID** de cada um (`120363…@g.us`).
+3. Libere os grupos em `deck.config.json` → `gruposWhatsApp`, escolhendo as **pastas** que cada um vê e, se quiser, a **unidade**:
+
+```json
+{ "jid": "120363…@g.us", "nome": "Equipe Lounge", "unidade": "lounge",
+  "pastas": ["clientes", "processos", "projetos", "geral"], "responder": "mencao", "resumoDiario": "09:00" }
+```
+
+- Grupos não liberados são ignorados.
+- `"responder": "mencao"` (padrão): responde quando alguém menciona o bot, responde a uma mensagem dele ou começa com "deck" ("Deck, qual o fornecedor de gelo?"). Com `"tudo"`, ele lê e responde tudo (gasta mais API).
+- Lembretes criados num grupo são avisados no próprio grupo. Confirmações ("sim/não") podem ser respondidas por qualquer pessoa do grupo.
 
 > ⚠️ Usa uma biblioteca **não oficial** (Baileys). Use um **chip secundário** só para o bot:
 > o WhatsApp pode banir números que usam clientes não oficiais.
@@ -77,7 +94,8 @@ No Gmail, use uma [senha de app](https://myaccount.google.com/apppasswords).
 
 ## Skills
 
-Arquivos `.md` em `skills/` ensinam tarefas específicas. Veja [`skills/README.md`](skills/README.md).
+Arquivos em `skills/` ensinam tarefas específicas, no formato `SKILL.md` (compatível com outros agentes, como o
+[OpenMausBot](https://github.com/milind-soni/OpenMausBot)). Veja [`skills/README.md`](skills/README.md).
 
 ## Estrutura
 

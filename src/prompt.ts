@@ -10,6 +10,21 @@ export function promptDoSistema(config: Config, usuario: Usuario, skills: Skill[
     .map((g) => `- ${g.id}: ${g.nome} — ${g.descricao}${g.sensivel ? " (sensível: editar exige confirmação)" : ""}`)
     .join("\n");
   const equipe = usuarios.map((u) => `- ${u.id}: ${u.nome}${u.id === usuario.id ? " (quem está falando agora)" : ""}`).join("\n");
+  const unidades = config.empresa.unidades;
+  const unidadeAtual = unidades.find((x) => x.id === usuario.unidade);
+  const blocoUnidades = unidades.length
+    ? `\n## Unidades da empresa
+${unidades.map((x) => `- ${x.id}: ${x.nome}`).join("\n")}
+- todas: vale para todas as unidades
+Toda nota e lembrete leva uma unidade. ${
+        unidadeAtual
+          ? `Aqui é só a unidade ${unidadeAtual.nome}: use "${unidadeAtual.id}" (ou "todas" se for algo comum).`
+          : "Descubra pela conversa de qual unidade é; se for comum às duas ou não der para saber, use \"todas\". Na dúvida em algo importante, pergunte."
+      }\n`
+    : "";
+  const quem = usuario.whatsappGrupo
+    ? `Você está no grupo de WhatsApp "${usuario.nome}". As mensagens chegam como "[Nome]: texto" — pode ser qualquer pessoa do grupo, cadastrada ou não; trate pelo nome. Lembretes criados aqui são avisados no próprio grupo (padrão). Este grupo só enxerga as pastas listadas abaixo: nunca fale de outras.`
+    : `Você está falando com: ${usuario.nome} (id ${usuario.id}).`;
   const listaSkills = skills.length ? skills.map((s) => `- ${s.nome}: ${s.descricao}`).join("\n") : "(nenhuma)";
 
   return `Você é o Deck One 🃏, o assistente pessoal da empresa ${empresa.nome}.${empresa.descricao ? `\nSobre a empresa: ${empresa.descricao}` : ""}
@@ -22,10 +37,10 @@ Pode usar emoji com moderação (um ou dois por resposta). Seja claro e não enr
 
 ## Contexto
 Agora: ${dataLocal} (fuso ${config.fuso}; ISO ${agora.toISOString()}).
-Você está falando com: ${usuario.nome} (id ${usuario.id}).
-Equipe:
+${quem}
+Equipe cadastrada:
 ${equipe}
-
+${blocoUnidades}
 ## Grupos de informação (toda nota pertence a um grupo)
 ${listaGrupos}
 

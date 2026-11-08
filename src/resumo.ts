@@ -1,6 +1,6 @@
 import path from "node:path";
 import { Colecao } from "./armazenamento.js";
-import { podeVerGrupo, type Config, type Usuario } from "./config.js";
+import { destinatarios, podeVerGrupo, podeVerUnidade, type Config, type Usuario } from "./config.js";
 import { colecaoLembretes, type Aviso, type Lembrete } from "./lembretes.js";
 import { dataLocal, formatarData, formatarDuracao, partesLocais } from "./tempo.js";
 
@@ -32,7 +32,7 @@ function arredondar(min: number): number {
 }
 
 function doUsuario(config: Config, u: Usuario, l: Lembrete) {
-  return !l.concluido && l.para.includes(u.id) && (!l.grupo || podeVerGrupo(config, u, l.grupo));
+  return !l.concluido && l.para.includes(u.id) && (!l.grupo || podeVerGrupo(config, u, l.grupo)) && podeVerUnidade(u, l.unidade);
 }
 
 export function textoDoResumo(config: Config, u: Usuario, agora: Date): string {
@@ -50,7 +50,7 @@ export function textoDoResumo(config: Config, u: Usuario, agora: Date): string {
 
   const h = partesLocais(agora, config.fuso).hora;
   const saudacao = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-  const partes = [`☀️ ${saudacao}, ${u.nome}! Seu resumo de hoje:`];
+  const partes = [u.whatsappGrupo ? `☀️ ${saudacao}, pessoal do ${u.nome}! Resumo de hoje:` : `☀️ ${saudacao}, ${u.nome}! Seu resumo de hoje:`];
   if (deHoje.length) partes.push(`\n*Hoje*\n${ordenar(deHoje).map(linha).join("\n")}`);
   if (atrasados.length) partes.push(`\n*Pendentes (já passaram)*\n${ordenar(atrasados).map(linha).join("\n")}`);
   if (proximos.length) partes.push(`\n*Próximos 3 dias*\n${ordenar(proximos).map(linha).join("\n")}`);
@@ -64,7 +64,7 @@ export function resumosDevidos(config: Config, agora: Date): Usuario[] {
   const p = partesLocais(agora, config.fuso);
   const minutoAgora = p.hora * 60 + p.minuto;
   return colecaoResumos(config).transacao((estado) => {
-    const devidos = config.empresa.usuarios.filter((u) => {
+    const devidos = destinatarios(config).filter((u) => {
       const m = u.resumoDiario?.match(/^(\d{1,2}):(\d{2})$/);
       if (!m) return false;
       const ja = estado.find((e) => e.id === u.id)?.ultimo === hoje;

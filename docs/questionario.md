@@ -22,8 +22,12 @@
 | Orçamento OpenAI | Até US$ 20/mês |
 | Prioridade do 1º mês | **Lembretes que nunca falham** |
 | Open source | Para outras empresas usarem (código genérico, dados de cada empresa ficam com ela) |
+| Empresa | **Barra Deck**, com duas unidades: **Barra Deck Restaurante** e **BD Lounge** |
+| Separação das unidades | Etiqueta por nota/lembrete (Restaurante, Lounge ou ambas) |
+| Acesso | Pelos **grupos de WhatsApp** que o dono escolher: cada grupo vê só as pastas liberadas, independente de quem está nele |
+| OpenMausBot | Só como referência (formato de skills `SKILL.md`) |
 
-⏳ Ainda em aberto: nome e descrição da empresa (1.1), equipe e quem vê o financeiro (2.2),
+⏳ Ainda em aberto: descrição de cada casa (1.1), quais grupos de WhatsApp e que pastas cada um vê (2.2),
 exemplos reais de notas e perguntas (3.2, 3.3), o que o faria parar de usar (9.3).
 
 ---

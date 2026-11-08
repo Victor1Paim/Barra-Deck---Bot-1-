@@ -1,8 +1,12 @@
 {
   "empresa": {
-    "nome": "Minha Empresa",
-    "descricao": "Escreva aqui, em 2 ou 3 frases, o que a empresa faz. O Deck One usa isso como contexto."
+    "nome": "Barra Deck",
+    "descricao": "Grupo com duas casas: o Barra Deck Restaurante e o BD Lounge. Escreva aqui, em 2 ou 3 frases, o que cada uma faz."
   },
+  "unidades": [
+    { "id": "restaurante", "nome": "Barra Deck Restaurante" },
+    { "id": "lounge", "nome": "BD Lounge" }
+  ],
   "grupos": [
     { "id": "clientes", "nome": "Clientes e fornecedores", "descricao": "Contatos, histórico, preferências, condições combinadas" },
     { "id": "processos", "nome": "Processos e reuniões", "descricao": "Como fazemos as coisas, decisões, atas de reunião" },
@@ -19,17 +23,33 @@
       "admin": true,
       "grupos": ["*"],
       "resumoDiario": "08:00"
+    }
+  ],
+  "gruposWhatsApp": [
+    {
+      "jid": "120363000000000001@g.us",
+      "nome": "Equipe Restaurante",
+      "unidade": "restaurante",
+      "pastas": ["clientes", "processos", "projetos", "geral"],
+      "responder": "mencao",
+      "resumoDiario": "09:00"
     },
     {
-      "id": "ana",
-      "nome": "Ana",
-      "whatsapp": "5511988880000",
-      "grupos": [],
-      "resumoDiario": "08:30"
+      "jid": "120363000000000002@g.us",
+      "nome": "Equipe Lounge",
+      "unidade": "lounge",
+      "pastas": ["clientes", "processos", "projetos", "geral"],
+      "responder": "mencao"
+    },
+    {
+      "jid": "120363000000000003@g.us",
+      "nome": "Sócios",
+      "pastas": ["clientes", "processos", "financeiro", "projetos", "geral"],
+      "responder": "mencao"
     }
   ],
   "canais": {
-    "whatsapp": { "ativo": false },
+    "whatsapp": { "ativo": false, "conversaPrivada": true },
     "email": { "ativo": false, "remetente": "" }
   }
 }

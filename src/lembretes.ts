@@ -22,6 +22,8 @@ export interface Lembrete {
   /** Usuários que recebem o aviso. */
   para: string[];
   grupo?: string;
+  /** Unidade da empresa ou "todas". */
+  unidade?: string;
   /** Próxima ocorrência (ISO UTC). */
   quando: string;
   /** Dia/hora originais no fuso, para recorrências não "escorregarem" (ex.: dia 31). */
@@ -41,7 +43,8 @@ export const colecaoLembretes = (config: Config) =>
   new Colecao<Lembrete>(path.join(config.pastaDados, "lembretes.json"), config.chaveDados);
 
 export function novoLembrete(
-  dados: Pick<Lembrete, "texto" | "autor" | "para" | "grupo" | "recorrencia"> & { quando: Date; antecedencias?: number[] },
+  dados: Pick<Lembrete, "texto" | "autor" | "para" | "grupo" | "recorrencia"> & {
+    unidade?: string; quando: Date; antecedencias?: number[] },
   config: Config,
   agora: Date,
 ): Lembrete {
@@ -52,6 +55,7 @@ export function novoLembrete(
     autor: dados.autor,
     para: dados.para,
     grupo: dados.grupo,
+    unidade: dados.unidade,
     quando: dados.quando.toISOString(),
     ancora: { dia: p.dia, mes: p.mes, hora: p.hora, minuto: p.minuto },
     recorrencia: dados.recorrencia,

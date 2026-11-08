@@ -111,7 +111,7 @@ async function servico(config: Config) {
     exigirChaveApi(config);
     let wa: WhatsApp;
     const sessoes = new SessoesWhatsApp(config, (u, t) => wa.enviar(u, t));
-    wa = new WhatsApp(config, (u, t) => sessoes.receber(u, t));
+    wa = new WhatsApp(config, sessoes);
     canais.push(wa);
     await wa.conectar();
   }

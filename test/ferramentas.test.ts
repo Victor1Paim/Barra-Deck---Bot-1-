@@ -86,7 +86,7 @@ test("não lê fora da pasta de conhecimento", () => {
 });
 
 test("lê skill com cabeçalho", () => {
-  assert.equal(lerSkill(path.resolve("skills/registro-de-reuniao.md"))?.nome, "registro-de-reuniao");
+  assert.equal(lerSkill(path.resolve("skills/registro-de-reuniao/SKILL.md"))?.nome, "registro-de-reuniao");
 });
 
 test("número de WhatsApp com e sem o 9º dígito", () => {

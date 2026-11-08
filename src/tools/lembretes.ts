@@ -1,4 +1,5 @@
-import { podeVerGrupo } from "../config.js";
+import { destinatarios, podeVerGrupo, podeVerUnidade } from "../config.js";
+import { esquemaUnidade, resolverUnidade } from "./notas.js";
 import { colecaoLembretes, novoLembrete, type Lembrete, type Recorrencia } from "../lembretes.js";
 import { formatarData } from "../tempo.js";
 import type { Ferramenta, Contexto } from "./tipos.js";
@@ -29,7 +30,7 @@ const esquemaAntecedencia = {
 
 function visivel(ctx: Contexto, l: Lembrete): boolean {
   const meu = l.autor === ctx.usuario.id || l.para.includes(ctx.usuario.id) || !!ctx.usuario.admin;
-  return meu && (!l.grupo || podeVerGrupo(ctx.config, ctx.usuario, l.grupo));
+  return meu && (!l.grupo || podeVerGrupo(ctx.config, ctx.usuario, l.grupo)) && podeVerUnidade(ctx.usuario, l.unidade);
 }
 
 function buscar(ctx: Contexto, id: string): Lembrete | undefined {
@@ -39,7 +40,7 @@ function buscar(ctx: Contexto, id: string): Lembrete | undefined {
 
 function validarPara(ctx: Contexto, para?: string[]): string[] | { erro: string } {
   const lista = para?.length ? para : [ctx.usuario.id];
-  const ids = ctx.config.empresa.usuarios.map((u) => u.id);
+  const ids = destinatarios(ctx.config).map((u) => u.id);
   const invalidos = lista.filter((p) => !ids.includes(p));
   return invalidos.length ? { erro: `Usuários desconhecidos: ${invalidos.join(", ")}. Válidos: ${ids.join(", ")}` } : lista;
 }
@@ -52,6 +53,7 @@ function paraExibir(ctx: Contexto, l: Lembrete) {
     quandoISO: l.quando,
     para: l.para,
     grupo: l.grupo,
+    unidade: l.unidade,
     recorrencia: l.recorrencia,
     antecedenciasMin: l.antecedencias,
     situacao: l.concluido ? "concluido" : l.disparado ? "atrasado (já disparou, falta concluir)" : "pendente",
@@ -72,24 +74,27 @@ export const criarLembrete: Ferramenta = {
       quando: { type: "string", description: "Primeira ocorrência, ISO 8601 com fuso. Ex.: 2026-11-10T09:00:00-03:00" },
       recorrencia: esquemaRecorrencia,
       avisarAntes: esquemaAntecedencia,
-      para: { type: "array", items: { type: "string" }, description: "ids dos usuários avisados (padrão: quem pediu)" },
-      grupo: { type: "string", description: "Grupo relacionado (ex.: financeiro)" },
+      para: { type: "array", items: { type: "string" }, description: "ids de pessoas ou grupos de WhatsApp avisados (padrão: quem pediu / o grupo atual)" },
+      grupo: { type: "string", description: "Pasta relacionada (ex.: financeiro)" },
+      unidade: esquemaUnidade(),
     },
     required: ["texto", "quando"],
   },
   resumir: (a) => `criar lembrete "${a.texto}" para ${a.quando}`,
-  executar({ texto, quando, recorrencia, avisarAntes = [], para, grupo }, ctx) {
+  executar({ texto, quando, recorrencia, avisarAntes = [], para, grupo, unidade }, ctx) {
     const data = new Date(quando);
     if (Number.isNaN(data.getTime())) return { erro: `Data inválida: ${quando}` };
     if (!recorrencia && data.getTime() < ctx.agora().getTime() - 60_000) return { erro: "Essa data já passou." };
     if (grupo && !podeVerGrupo(ctx.config, ctx.usuario, grupo)) return { erro: `Sem acesso ao grupo ${grupo}.` };
+    const u = resolverUnidade(ctx, unidade);
+    if (typeof u !== "string") return u;
     const destinatarios = validarPara(ctx, para);
     if ("erro" in destinatarios) return destinatarios;
     const antecedencias = (avisarAntes as { quantidade: number; unidade: string }[]).map(
       (a) => a.quantidade * (UNIDADES[a.unidade] ?? 1),
     );
     const l = novoLembrete(
-      { texto, autor: ctx.usuario.id, para: destinatarios, grupo, recorrencia: recorrencia as Recorrencia, quando: data, antecedencias },
+      { texto, autor: ctx.usuario.id, para: destinatarios, grupo, unidade: u, recorrencia: recorrencia as Recorrencia, quando: data, antecedencias },
       ctx.config,
       ctx.agora(),
     );
@@ -164,6 +169,7 @@ export const editarLembrete: Ferramenta = {
         autor: atual.autor,
         para: destinatarios,
         grupo: atual.grupo,
+        unidade: atual.unidade,
         quando: data,
         recorrencia: recorrencia ? (recorrencia.tipo === "nenhuma" ? undefined : recorrencia) : atual.recorrencia,
         antecedencias: avisarAntes

@@ -24,6 +24,14 @@ Baseado nas respostas de [`questionario.md`](questionario.md). Prioridade númer
 - [x] **Criptografia** AES-256-GCM dos dados com `DECK_CHAVE_DADOS`
 - [x] Trava entre processos (terminal e serviço juntos sem corromper dados)
 
+## ✅ Fase 1.5 — Barra Deck: unidades e grupos de WhatsApp (v0.3)
+
+- [x] Empresa **Barra Deck** com duas unidades: **Barra Deck Restaurante** e **BD Lounge** (etiqueta por nota/lembrete, ou "todas")
+- [x] **Grupos de WhatsApp** liberados um a um; cada grupo enxerga só as pastas (e a unidade) escolhidas, independente de quem fala
+- [x] No grupo, o bot responde quando é chamado (menção, resposta ou "deck…"); lembretes do grupo avisam no grupo
+- [x] Ao conectar, o serviço lista os grupos e os JIDs para facilitar a liberação
+- [x] Skills no formato `SKILL.md` (compatível com o OpenMausBot, usado como referência)
+
 ## Fase 2 — Memória da empresa melhor
 
 - [ ] Importar conversas exportadas do WhatsApp ("Exportar conversa" → `.txt`) e extrair notas e prazos

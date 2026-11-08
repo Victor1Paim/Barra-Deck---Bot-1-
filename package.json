@@ -1,6 +1,6 @@
 {
   "name": "deck-one",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Deck One — assistente pessoal autônomo de terminal para as informações da empresa (notas, lembretes, base de conhecimento), com cérebro na API da OpenAI.",
   "license": "MIT",
   "type": "module",

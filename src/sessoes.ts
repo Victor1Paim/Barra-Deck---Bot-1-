@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { Agente, type Confirmar } from "./agente.js";
 import type { Config, Usuario } from "./config.js";
+import type { Receptor } from "./canais/whatsapp.js";
 import { promptDoSistema } from "./prompt.js";
 import { carregarSkills, ferramentaSkill } from "./skills.js";
 import { ferramentasBase } from "./tools/index.js";
@@ -33,20 +34,24 @@ const TEMPO_CONFIRMACAO = 5 * 60_000;
  * Conversas pelo WhatsApp: um agente por usuário, uma mensagem por vez,
  * e confirmações respondidas com "sim"/"não" na própria conversa.
  */
-export class SessoesWhatsApp {
+export class SessoesWhatsApp implements Receptor {
   private agentes = new Map<string, Agente>();
   private filas = new Map<string, Promise<unknown>>();
-  private aguardando = new Map<string, (ok: boolean) => void>();
+  private aguardando_ = new Map<string, (ok: boolean) => void>();
 
   constructor(
     private config: Config,
     private enviar: (u: Usuario, texto: string) => Promise<void>,
   ) {}
 
-  async receber(u: Usuario, texto: string): Promise<string | undefined> {
-    const pendente = this.aguardando.get(u.id);
+  aguardando(id: string): boolean {
+    return this.aguardando_.has(id);
+  }
+
+  async receber(u: Usuario, texto: string, autor?: string): Promise<string | undefined> {
+    const pendente = this.aguardando_.get(u.id);
     if (pendente) {
-      this.aguardando.delete(u.id);
+      this.aguardando_.delete(u.id);
       pendente(SIM.test(texto.trim()));
       return undefined;
     }
@@ -55,7 +60,8 @@ export class SessoesWhatsApp {
       return "🧹 Conversa reiniciada! (As notas e lembretes continuam salvos.)";
     }
     const anterior = this.filas.get(u.id) ?? Promise.resolve();
-    const atual = anterior.catch(() => {}).then(() => this.agente(u).conversar(texto));
+    const mensagem = autor ? `[${autor}]: ${texto}` : texto;
+    const atual = anterior.catch(() => {}).then(() => this.agente(u).conversar(mensagem));
     this.filas.set(u.id, atual);
     return atual;
   }
@@ -72,8 +78,8 @@ export class SessoesWhatsApp {
   private perguntar(u: Usuario, pergunta: string): Promise<boolean> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
-        if (this.aguardando.get(u.id) === fim) {
-          this.aguardando.delete(u.id);
+        if (this.aguardando_.get(u.id) === fim) {
+          this.aguardando_.delete(u.id);
           resolve(false);
         }
       }, TEMPO_CONFIRMACAO);
@@ -81,7 +87,7 @@ export class SessoesWhatsApp {
         clearTimeout(timer);
         resolve(ok);
       };
-      this.aguardando.set(u.id, fim);
+      this.aguardando_.set(u.id, fim);
       this.enviar(u, `🤔 ${pergunta}\nResponda *sim* ou *não*.`).catch(() => fim(false));
     });
   }
