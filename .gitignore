@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+# Dados da empresa ficam fora do Git por padrão (privados).
+dados/
+conhecimento/*
+!conhecimento/README.md
+*.log
