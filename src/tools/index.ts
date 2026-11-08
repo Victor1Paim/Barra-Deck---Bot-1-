@@ -1,6 +1,6 @@
 import type { Ferramenta } from "./tipos.js";
 import { salvarNota, buscarNotas, editarNota, apagarNota } from "./notas.js";
-import { criarLembrete, listarLembretes, concluirLembrete } from "./lembretes.js";
+import { criarLembrete, listarLembretes, concluirLembrete, editarLembrete, apagarLembrete } from "./lembretes.js";
 import { listarDocumentos, lerDocumento } from "./conhecimento.js";
 
 export const ferramentasBase: Ferramenta[] = [
@@ -11,6 +11,8 @@ export const ferramentasBase: Ferramenta[] = [
   criarLembrete,
   listarLembretes,
   concluirLembrete,
+  editarLembrete,
+  apagarLembrete,
   listarDocumentos,
   lerDocumento,
 ];

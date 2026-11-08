@@ -6,3 +6,5 @@ dados/
 conhecimento/*
 !conhecimento/README.md
 *.log
+# Configuração da empresa (equipe, telefones, e-mails) — privada.
+deck.config.json

@@ -1,5 +1,35 @@
 # Questionário de direção — Deck One
 
+> **Respondido em 08/11/2026.** O resumo das respostas está logo abaixo; o que virou plano está em
+> [`roadmap.md`](roadmap.md). As perguntas abertas que ainda faltam estão marcadas com ⏳.
+
+## Respostas (resumo)
+
+| Tema | Resposta |
+|---|---|
+| Quem usa | Eu e algumas pessoas |
+| Informações | Tudo um pouco, **dividido em grupos**: clientes e fornecedores · processos e reuniões · financeiro · projetos, tarefas e ideias |
+| Onde estão hoje | WhatsApp |
+| Lembretes | Pontuais · recorrentes · prazos com antecedência · resumo diário |
+| Avisos | WhatsApp e e-mail |
+| WhatsApp | Direto, via biblioteca não oficial (Baileys) |
+| Autonomia | Misto: cria sozinho, confirma para editar e apagar |
+| Iniciativa | Age sem pedir, mas avisa o que fez |
+| Nunca sem confirmar | Apagar · alterar valores financeiros · mostrar dados a quem não pode |
+| Tom | Amigável e descontraído |
+| Sensibilidade | Dados bastante sensíveis (criptografia, LGPD) |
+| Hospedagem | Primeiro no PC, depois servidor online |
+| Orçamento OpenAI | Até US$ 20/mês |
+| Prioridade do 1º mês | **Lembretes que nunca falham** |
+| Open source | Para outras empresas usarem (código genérico, dados de cada empresa ficam com ela) |
+
+⏳ Ainda em aberto: nome e descrição da empresa (1.1), equipe e quem vê o financeiro (2.2),
+exemplos reais de notas e perguntas (3.2, 3.3), o que o faria parar de usar (9.3).
+
+---
+
+## Questionário completo (para referência ou para novas empresas)
+
 Responda direto neste arquivo (escreva embaixo de cada pergunta ou marque `[x]`).
 Não precisa responder tudo de uma vez: o que ficar em branco vira uma decisão para depois.
 Cada bloco diz **o que a resposta muda no bot**, para você saber por que estamos perguntando.

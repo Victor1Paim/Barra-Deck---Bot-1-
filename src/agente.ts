@@ -1,13 +1,16 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
-import type { Ferramenta, Contexto } from "./tools/tipos.js";
+import { precisaConfirmar, type Ferramenta, type Contexto } from "./tools/tipos.js";
 
-/** Decide se uma ferramenta que altera dados pode rodar. Retorna true para permitir. */
-export type Permissao = (ferramenta: Ferramenta, args: unknown) => Promise<boolean>;
+/** Pergunta ao usuário se pode executar a ação. true = pode. */
+export type Confirmar = (pergunta: string) => Promise<boolean>;
 
 export interface Eventos {
   aoChamarFerramenta?: (nome: string, args: unknown) => void;
 }
+
+/** Mantém o histórico curto para não gastar tokens à toa (as informações ficam nas notas). */
+const MAX_HISTORICO = 40;
 
 export class Agente {
   private historico: ChatCompletionMessageParam[] = [];
@@ -18,7 +21,7 @@ export class Agente {
     private ctx: Contexto,
     private ferramentas: Ferramenta[],
     private prompt: () => string,
-    private permitir: Permissao,
+    private confirmar: Confirmar,
     private eventos: Eventos = {},
   ) {
     this.porNome = new Map(ferramentas.map((f) => [f.nome, f]));
@@ -35,9 +38,18 @@ export class Agente {
     }));
   }
 
-  /** Executa o ciclo: modelo → ferramentas → modelo … até ter uma resposta final. */
+  private aparar(): void {
+    if (this.historico.length <= MAX_HISTORICO) return;
+    // Corta no começo de uma mensagem do usuário, para não separar chamada e resultado de ferramenta.
+    let i = this.historico.length - MAX_HISTORICO;
+    while (i < this.historico.length && this.historico[i].role !== "user") i++;
+    this.historico = this.historico.slice(i);
+  }
+
+  /** Ciclo: modelo → ferramentas → modelo … até ter uma resposta final. */
   async conversar(mensagem: string): Promise<string> {
     this.historico.push({ role: "user", content: mensagem });
+    this.aparar();
 
     for (let passo = 0; passo < this.ctx.config.maxPassos; passo++) {
       const resp = await this.cliente.chat.completions.create({
@@ -62,7 +74,7 @@ export class Agente {
         });
       }
     }
-    return `Parei após ${this.ctx.config.maxPassos} passos sem concluir. Tente dividir o pedido.`;
+    return `Ops, me enrolei: parei depois de ${this.ctx.config.maxPassos} passos sem terminar. Tenta dividir o pedido? 🙏`;
   }
 
   private async executar(nome: string, argsTexto: string): Promise<unknown> {
@@ -78,14 +90,15 @@ export class Agente {
 
     this.eventos.aoChamarFerramenta?.(nome, args);
 
-    if (f.altera) {
-      if (this.ctx.config.modo === "leitura") return { erro: "Modo somente leitura: ação bloqueada." };
-      if (this.ctx.config.modo === "perguntar" && !(await this.permitir(f, args))) {
-        return { erro: "O usuário recusou esta ação." };
-      }
+    if (f.nivel !== "leitura" && this.ctx.config.modo === "leitura") {
+      return { erro: "Modo somente leitura: ação bloqueada." };
     }
 
     try {
+      if (precisaConfirmar(f, args, this.ctx)) {
+        const resumo = f.resumir?.(args, this.ctx) ?? `${nome} ${JSON.stringify(args)}`;
+        if (!(await this.confirmar(`Posso ${resumo}?`))) return { erro: "O usuário recusou esta ação. Não tente de novo sem ele pedir." };
+      }
       return await f.executar(args, this.ctx);
     } catch (e) {
       return { erro: e instanceof Error ? e.message : String(e) };

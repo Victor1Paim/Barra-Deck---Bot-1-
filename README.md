@@ -1,112 +1,110 @@
-# Deck One
+# Deck One 🃏
 
-Assistente pessoal **autônomo** de terminal para as informações da empresa. Ele guarda notas,
-cria lembretes e consulta documentos internos. O "cérebro" é a API da OpenAI, e o bot decide
-sozinho quais ferramentas usar para cumprir cada pedido.
+Assistente pessoal **autônomo** da empresa: guarda as informações organizadas em grupos, cria
+lembretes que **nunca falham** e conversa pelo **terminal** ou pelo **WhatsApp**. O "cérebro" é a
+API da OpenAI, que decide sozinha quais ferramentas usar para cumprir cada pedido.
 
-> Status: v0.1, estrutura inicial. Direção do projeto em [`docs/questionario.md`](docs/questionario.md).
+> v0.2: Fase 1 do [roadmap](docs/roadmap.md), feita a partir das respostas do [questionário](docs/questionario.md).
 
-## O que ele faz hoje
+## O que ele faz
 
-| Ferramenta | O que faz |
-|---|---|
-| `salvar_nota`, `buscar_notas`, `editar_nota`, `apagar_nota` | Memória da empresa (clientes, processos, decisões...) |
-| `criar_lembrete`, `listar_lembretes`, `concluir_lembrete` | Lembretes com data/hora; avisa no terminal quando vencem |
-| `listar_documentos`, `ler_documento` | Lê documentos da pasta `conhecimento/` |
-| `carregar_skill` | Carrega instruções de uma skill da pasta `skills/` |
+- **Memória por grupos**: clientes e fornecedores · processos e reuniões · financeiro · projetos, tarefas e ideias.
+- **Equipe**: várias pessoas, e o financeiro só aparece para quem tem acesso.
+- **Lembretes**: pontuais, recorrentes ("todo dia 5", "toda segunda e quarta"), com aviso antecipado ("3 dias antes").
+- **Resumo diário** no horário de cada pessoa.
+- **Avisos por WhatsApp e e-mail**, com fila e novas tentativas. Se o PC estava desligado, avisa o que passou assim que liga.
+- **Iniciativa**: você cita um vencimento e ele já cria o lembrete, e avisa que criou.
+- **Segurança**: apagar e mexer no financeiro sempre pedem confirmação, e os dados podem ser criptografados.
 
-## Instalação
+## Instalação (Windows / PowerShell)
 
-Requer **Node.js 20+** e uma chave da API da OpenAI.
+Requer **Node.js 20+** ([nodejs.org](https://nodejs.org)) e uma chave da API da OpenAI.
 
 ```powershell
 git clone https://github.com/Victor1Paim/Barra-Deck---Bot-1-.git deck-one
 cd deck-one
 npm install
-copy .env.example .env   # no Linux/Mac: cp .env.example .env
+copy .env.example .env
+copy deck.config.example.json deck.config.json
 ```
 
-Abra o `.env` e coloque sua `OPENAI_API_KEY`.
+1. No `.env`, coloque a `OPENAI_API_KEY`.
+2. Gere a chave de criptografia com `npm run dev -- gerar-chave`, cole no `.env` e **guarde uma cópia fora do PC**.
+3. No `deck.config.json`, preencha a empresa, a equipe (WhatsApp com DDI+DDD, só números) e quem vê o financeiro (`"grupos": ["*"]` = tudo).
 
 ## Uso
 
-Conversa interativa (PowerShell ou terminal da IDE):
+| Comando | O que faz |
+|---|---|
+| `npm run dev` | Conversa no terminal (`/hoje`, `/limpar`, `/sair`) |
+| `npm run dev -- "pedido"` | Um pedido só, sem abrir a conversa |
+| `npm run servico` | **Deixe rodando.** Dispara lembretes e resumos e liga o WhatsApp |
 
-```powershell
-npm run dev
-```
+Exemplos:
+- "o fornecedor de papel é a Gráfica Sol, contato Marta (11) 99999-0000"
+- "todo dia 5 às 9h lembrar a Ana e eu de pagar o aluguel, avisando 2 dias antes"
+- "o que combinamos com a Gráfica Sol?"
 
-Pedido único, sem abrir a conversa:
+### WhatsApp
 
-```powershell
-npm run dev -- "lembre-me amanhã às 9h de ligar para o fornecedor"
-```
+1. Em `deck.config.json`, coloque `"canais": { "whatsapp": { "ativo": true } }`.
+2. Rode `npm run servico` e escaneie o QR Code com o WhatsApp **do número do bot**
+   (Configurações → Aparelhos conectados → Conectar aparelho).
+3. A equipe cadastrada manda mensagem para esse número e conversa com o Deck One. Quem não está cadastrado é ignorado.
 
-Para usar o comando `deck-one` em qualquer pasta:
+> ⚠️ Usa uma biblioteca **não oficial** (Baileys). Use um **chip secundário** só para o bot:
+> o WhatsApp pode banir números que usam clientes não oficiais.
 
-```powershell
-npm run build
-npm link
-deck-one
-```
+### E-mail
 
-Comandos dentro da conversa: `/limpar` (começa do zero) e `/sair`.
+Preencha `SMTP_*` no `.env` e ative `"email": { "ativo": true }` no `deck.config.json`.
+No Gmail, use uma [senha de app](https://myaccount.google.com/apppasswords).
 
-## Autonomia e permissões
+## Permissões (`DECK_MODO`)
 
-Defina `DECK_MODO` no `.env`:
+| Modo | Criar | Editar | Apagar / financeiro |
+|---|---|---|---|
+| `misto` (padrão) | sozinho | confirma | **sempre confirma** |
+| `perguntar` | confirma | confirma | **sempre confirma** |
+| `auto` | sozinho | sozinho | **sempre confirma** |
+| `leitura` | bloqueado | bloqueado | bloqueado |
 
-- `perguntar` (padrão): faz consultas sozinho e pede confirmação antes de gravar, editar ou apagar.
-- `auto`: faz tudo sozinho.
-- `leitura`: só consulta, nunca grava.
+## Privacidade
 
-## Configuração (`.env`)
-
-| Variável | Padrão | |
-|---|---|---|
-| `OPENAI_API_KEY` | — | obrigatória |
-| `OPENAI_MODEL` | `gpt-5.4-mini` | qualquer modelo de chat com suporte a ferramentas |
-| `DECK_MODO` | `perguntar` | `perguntar` / `auto` / `leitura` |
-| `DECK_DADOS` | `./dados` | onde ficam `notas.json` e `lembretes.json` |
-| `DECK_CONHECIMENTO` | `./conhecimento` | documentos que o bot pode ler |
-| `DECK_SKILLS` | `./skills` | skills do bot |
-| `DECK_FUSO` | `America/Sao_Paulo` | fuso das datas |
-| `DECK_MAX_PASSOS` | `12` | limite de passos por pedido |
-
-**Privacidade:** `dados/` e o conteúdo de `conhecimento/` ficam fora do Git, então as informações
-da empresa não vão para o repositório público. Lembre que cada conversa é enviada à API da OpenAI.
+- `dados/`, o conteúdo de `conhecimento/`, `deck.config.json` e `.env` ficam **fora do Git**.
+- Com `DECK_CHAVE_DADOS`, notas, lembretes e a fila de envios ficam criptografados (AES-256-GCM).
+- As conversas passam pela API da OpenAI.
 
 ## Skills
 
-Crie um `.md` em `skills/` com nome e descrição no cabeçalho. Veja [`skills/README.md`](skills/README.md)
-e o exemplo [`registro-de-reuniao`](skills/registro-de-reuniao.md).
+Arquivos `.md` em `skills/` ensinam tarefas específicas. Veja [`skills/README.md`](skills/README.md).
 
 ## Estrutura
 
 ```
 src/
-  index.ts          CLI (conversa, pedido único, aviso de lembretes)
+  index.ts          comandos (conversa, serviço, iniciar, gerar-chave)
   agente.ts         ciclo do agente: modelo → ferramentas → modelo
-  prompt.ts         prompt do sistema (personalidade e regras)
-  config.ts         leitura do .env
-  skills.ts         carregamento das skills
-  armazenamento.ts  coleções em JSON
-  tools/            ferramentas (notas, lembretes, conhecimento)
-skills/             skills do bot (Markdown)
-conhecimento/       documentos da empresa (fora do Git)
-docs/               questionário e roadmap
-test/               testes (npm test)
+  prompt.ts         personalidade e regras
+  sessoes.ts        um agente por pessoa no WhatsApp + confirmações
+  lembretes.ts      recorrência, antecedência, avisos vencidos
+  envios.ts         fila de entrega com novas tentativas
+  agendador.ts      relógio do serviço
+  resumo.ts         textos de aviso e resumo diário
+  config.ts         .env + deck.config.json (empresa, grupos, equipe)
+  cripto.ts         criptografia dos dados
+  armazenamento.ts  coleções JSON com trava entre processos
+  canais/           whatsapp, email, console
+  tools/            ferramentas do agente (notas, lembretes, conhecimento)
+skills/  conhecimento/  docs/  test/
 ```
 
 ## Desenvolvimento
 
 ```powershell
-npm test
 npm run typecheck
+npm test
 ```
-
-Para adicionar uma ferramenta, crie um objeto `Ferramenta` em `src/tools/` e registre em `src/tools/index.ts`.
-Marque `altera: true` se ela grava ou muda algo, para passar pelo controle de permissão.
 
 ## Licença
 

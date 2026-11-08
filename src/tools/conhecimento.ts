@@ -27,7 +27,7 @@ function listar(dir: string, base: string): string[] {
 export const listarDocumentos: Ferramenta = {
   nome: "listar_documentos",
   descricao: "Lista os documentos da empresa disponíveis na base de conhecimento.",
-  altera: false,
+  nivel: "leitura",
   parametros: { type: "object", properties: {} },
   executar(_args, ctx) {
     return listar(ctx.config.pastaConhecimento, ctx.config.pastaConhecimento);
@@ -37,7 +37,7 @@ export const listarDocumentos: Ferramenta = {
 export const lerDocumento: Ferramenta = {
   nome: "ler_documento",
   descricao: "Lê um documento da base de conhecimento (caminho relativo, como aparece em listar_documentos).",
-  altera: false,
+  nivel: "leitura",
   parametros: { type: "object", properties: { caminho: { type: "string" } }, required: ["caminho"] },
   executar({ caminho }, ctx) {
     const alvo = dentroDaBase(ctx, caminho);

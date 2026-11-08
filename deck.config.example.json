@@ -1,0 +1,35 @@
+{
+  "empresa": {
+    "nome": "Minha Empresa",
+    "descricao": "Escreva aqui, em 2 ou 3 frases, o que a empresa faz. O Deck One usa isso como contexto."
+  },
+  "grupos": [
+    { "id": "clientes", "nome": "Clientes e fornecedores", "descricao": "Contatos, histórico, preferências, condições combinadas" },
+    { "id": "processos", "nome": "Processos e reuniões", "descricao": "Como fazemos as coisas, decisões, atas de reunião" },
+    { "id": "financeiro", "nome": "Financeiro", "descricao": "Contas a pagar e receber, valores, vencimentos", "restrito": true, "sensivel": true },
+    { "id": "projetos", "nome": "Projetos, tarefas e ideias", "descricao": "Trabalho em andamento, responsáveis, ideias" },
+    { "id": "geral", "nome": "Geral", "descricao": "O que não se encaixa nos outros grupos" }
+  ],
+  "usuarios": [
+    {
+      "id": "victor",
+      "nome": "Victor",
+      "whatsapp": "5511999990000",
+      "email": "voce@exemplo.com",
+      "admin": true,
+      "grupos": ["*"],
+      "resumoDiario": "08:00"
+    },
+    {
+      "id": "ana",
+      "nome": "Ana",
+      "whatsapp": "5511988880000",
+      "grupos": [],
+      "resumoDiario": "08:30"
+    }
+  ],
+  "canais": {
+    "whatsapp": { "ativo": false },
+    "email": { "ativo": false, "remetente": "" }
+  }
+}

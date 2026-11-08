@@ -1,14 +1,17 @@
 #!/usr/bin/env node
+import fs from "node:fs";
+import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import OpenAI from "openai";
-import { carregarConfig } from "./config.js";
-import { Agente } from "./agente.js";
-import { ferramentasBase } from "./tools/index.js";
-import { lembretesVencidos } from "./tools/lembretes.js";
-import { carregarSkills, ferramentaSkill } from "./skills.js";
-import { promptDoSistema } from "./prompt.js";
-import type { Contexto } from "./tools/tipos.js";
+import { buscarUsuario, carregarConfig, empresaPadrao, type Config } from "./config.js";
+import { gerarChave } from "./cripto.js";
+import { criarAgente, SessoesWhatsApp } from "./sessoes.js";
+import { iniciarAgendador } from "./agendador.js";
+import { canalEmail } from "./canais/email.js";
+import { canalConsole } from "./canais/console.js";
+import { WhatsApp } from "./canais/whatsapp.js";
+import type { Canal } from "./envios.js";
+import { textoDoResumo } from "./resumo.js";
 
 const cor = {
   cinza: (s: string) => `\x1b[90m${s}\x1b[0m`,
@@ -17,72 +20,128 @@ const cor = {
   negrito: (s: string) => `\x1b[1m${s}\x1b[0m`,
 };
 
-async function main() {
-  const config = carregarConfig();
+const AJUDA = `Deck One — assistente pessoal da empresa
+
+Uso:
+  deck-one                    conversa no terminal
+  deck-one "pedido"           faz um pedido só e sai
+  deck-one servico            liga lembretes, resumo diário e WhatsApp (deixe rodando)
+  deck-one iniciar            cria o deck.config.json (empresa, grupos, equipe)
+  deck-one gerar-chave        gera uma chave para criptografar os dados
+
+Variável DECK_USUARIO escolhe quem está usando o terminal (padrão: o primeiro admin).`;
+
+function exigirChaveApi(config: Config) {
   if (!config.apiKey) {
     console.error("Falta OPENAI_API_KEY. Copie .env.example para .env e preencha a chave.");
     process.exit(1);
   }
+}
 
-  const ctx: Contexto = { config, agora: () => new Date() };
-  const skills = carregarSkills(config.pastaSkills);
-  const ferramentas = skills.length ? [...ferramentasBase, ferramentaSkill(skills)] : ferramentasBase;
+async function conversar(config: Config, pedido: string) {
+  exigirChaveApi(config);
+  const usuario = buscarUsuario(config, process.env.DECK_USUARIO);
   const rl = readline.createInterface({ input, output });
-
-  const agente = new Agente(
-    new OpenAI({ apiKey: config.apiKey }),
-    ctx,
-    ferramentas,
-    () => promptDoSistema(config, skills, ctx.agora()),
-    async (f, args) => {
-      const r = await rl.question(cor.amarelo(`  Permitir ${f.nome} ${JSON.stringify(args)}? [s/N] `));
-      return /^s(im)?$/i.test(r.trim());
-    },
-    { aoChamarFerramenta: (nome) => console.log(cor.cinza(`  · ${nome}`)) },
+  const agente = criarAgente(
+    config,
+    usuario,
+    "terminal",
+    async (pergunta) => /^s(im)?$/i.test((await rl.question(cor.amarelo(`  🤔 ${pergunta} [s/N] `))).trim()),
+    (nome) => console.log(cor.cinza(`  · ${nome}`)),
   );
 
-  const avisarLembretes = () => {
-    for (const l of lembretesVencidos(ctx)) {
-      const hora = new Date(l.quando).toLocaleString("pt-BR", { timeZone: config.fuso });
-      console.log(cor.amarelo(`\n⏰ Lembrete (${hora}): ${l.texto}  [${l.id}]`));
-    }
-  };
-
-  // Pedido único: deck-one "lembre-me amanhã às 9h de pagar o fornecedor"
-  const pedido = process.argv.slice(2).join(" ").trim();
-  if (pedido) {
-    avisarLembretes();
-    console.log(await agente.conversar(pedido));
-    rl.close();
-    return;
-  }
-
-  console.log(cor.negrito("Deck One") + cor.cinza(`  · modelo ${config.modelo} · modo ${config.modo}`));
-  console.log(cor.cinza("Comandos: /limpar (nova conversa), /sair. Skills: " + (skills.map((s) => s.nome).join(", ") || "nenhuma")));
-  avisarLembretes();
-  const timer = setInterval(avisarLembretes, 30_000);
-
   try {
+    if (pedido) {
+      console.log(await agente.conversar(pedido));
+      return;
+    }
+    console.log(cor.negrito("Deck One 🃏") + cor.cinza(`  · ${usuario.nome} · modelo ${config.modelo} · modo ${config.modo}`));
+    console.log(cor.cinza("Comandos: /hoje, /limpar, /sair"));
+    console.log(cor.cinza(textoDoResumo(config, usuario, new Date()).replace(/\*/g, "")));
+
     while (true) {
       const texto = (await rl.question(cor.ciano("\nvocê › "))).trim();
       if (!texto) continue;
       if (texto === "/sair") break;
+      if (texto === "/hoje") {
+        console.log(textoDoResumo(config, usuario, new Date()).replace(/\*/g, ""));
+        continue;
+      }
       if (texto === "/limpar") {
         agente.limpar();
-        console.log(cor.cinza("Conversa reiniciada."));
+        console.log(cor.cinza("Conversa reiniciada (notas e lembretes continuam salvos)."));
         continue;
       }
       try {
-        const resposta = await agente.conversar(texto);
-        console.log(`\n${cor.negrito("deck one ›")} ${resposta}`);
+        console.log(`\n${cor.negrito("deck one ›")} ${await agente.conversar(texto)}`);
       } catch (e) {
         console.error(cor.amarelo(`Erro: ${e instanceof Error ? e.message : e}`));
       }
     }
   } finally {
-    clearInterval(timer);
     rl.close();
   }
+}
+
+/** Impede dois serviços ao mesmo tempo (avisos duplicados e sessão do WhatsApp brigando). */
+function travarServico(config: Config) {
+  fs.mkdirSync(config.pastaDados, { recursive: true });
+  const arquivo = path.join(config.pastaDados, "servico.pid");
+  if (fs.existsSync(arquivo)) {
+    const pid = Number(fs.readFileSync(arquivo, "utf8"));
+    try {
+      process.kill(pid, 0);
+      console.error(`O serviço já está rodando (pid ${pid}).`);
+      process.exit(1);
+    } catch {}
+  }
+  fs.writeFileSync(arquivo, String(process.pid));
+  const soltar = () => fs.rmSync(arquivo, { force: true });
+  process.on("exit", soltar);
+  for (const s of ["SIGINT", "SIGTERM"] as const) process.on(s, () => process.exit(0));
+}
+
+async function servico(config: Config) {
+  travarServico(config);
+  const canais: Canal[] = [canalConsole];
+  const email = canalEmail(config);
+  if (email) canais.push(email);
+
+  if (config.empresa.canais.whatsapp.ativo) {
+    exigirChaveApi(config);
+    let wa: WhatsApp;
+    const sessoes = new SessoesWhatsApp(config, (u, t) => wa.enviar(u, t));
+    wa = new WhatsApp(config, (u, t) => sessoes.receber(u, t));
+    canais.push(wa);
+    await wa.conectar();
+  }
+
+  const nomes = canais.map((c) => c.nome).join(", ");
+  console.log(cor.negrito("Deck One 🃏 serviço ligado") + cor.cinza(` · canais: ${nomes} · Ctrl+C para parar`));
+  if (!email && !config.empresa.canais.whatsapp.ativo) {
+    console.log(cor.amarelo("Nenhum canal externo ativo: os avisos aparecem só nesta janela. Veja deck.config.json → canais."));
+  }
+  iniciarAgendador(config, canais);
+}
+
+async function main() {
+  const [comando, ...resto] = process.argv.slice(2);
+
+  if (comando === "ajuda" || comando === "--help" || comando === "-h") return console.log(AJUDA);
+  if (comando === "gerar-chave") {
+    console.log(`Coloque no .env (e guarde uma cópia em lugar seguro — sem ela os dados não abrem):\n\nDECK_CHAVE_DADOS=${gerarChave()}`);
+    return;
+  }
+  if (comando === "iniciar") {
+    const arquivo = path.resolve(process.env.DECK_CONFIG ?? "deck.config.json");
+    if (fs.existsSync(arquivo)) return console.log(`${arquivo} já existe.`);
+    fs.writeFileSync(arquivo, JSON.stringify(empresaPadrao(), null, 2) + "\n");
+    return console.log(`Criei ${arquivo}. Edite com o nome da empresa, a equipe e os canais.`);
+  }
+
+  const config = carregarConfig();
+  if (comando === "servico" || comando === "serviço") return servico(config);
+  return conversar(config, [comando, ...resto].filter(Boolean).join(" ").trim());
 }
 
 main().catch((e) => {

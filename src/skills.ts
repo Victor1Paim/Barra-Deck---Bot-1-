@@ -42,7 +42,7 @@ export function ferramentaSkill(skills: Skill[]): Ferramenta {
   return {
     nome: "carregar_skill",
     descricao: "Carrega as instruções completas de uma skill antes de executar a tarefa dela.",
-    altera: false,
+    nivel: "leitura",
     parametros: {
       type: "object",
       properties: { nome: { type: "string", enum: skills.map((s) => s.nome) } },
